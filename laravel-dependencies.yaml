@@ -1,0 +1,96 @@
+- name: Deploy Laravel Requirements
+  hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Update Repositories
+      ansible.builtin.apt:
+        update_cache: yes
+    - name: Install OS Requirements
+      ansible.builtin.apt:
+        pkg:
+        - gnupg
+        - gosu
+        #- curl
+        - ca-certificates
+        - zip
+        - unzip
+        #- git
+        #- supervisor
+        - sqlite3
+        - libcap2-bin
+        - libpng-dev
+        #- python2
+        - dnsutils
+        - librsvg2-bin
+        - fswatch
+        - ffmpeg
+        #- nano
+
+    - name: Install PHP Repository
+      ansible.builtin.shell: |
+        curl -sS 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x14aa40ec0831756756d7f66c4f4ea0aae5267a6c' | gpg --dearmor | tee /etc/apt/keyrings/ppa_ondrej_php.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/keyrings/ppa_ondrej_php.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu noble main" > /etc/apt/sources.list.d/ppa_ondrej_php.list
+    - name: Install PHP Requirements
+      ansible.builtin.apt:
+        update_cache: yes
+        pkg:
+        - php8.3-cli
+        - php8.3-dev
+        - php8.3-pgsql
+        - php8.3-sqlite3
+        - php8.3-gd
+        - php8.3-curl
+        - php8.3-imap
+        - php8.3-mysql
+        - php8.3-mbstring
+        - php8.3-xml
+        - php8.3-zip
+        - php8.3-bcmath
+        - php8.3-soap
+        - php8.3-intl
+        - php8.3-readline
+        - php8.3-ldap
+        - php8.3-msgpack
+        - php8.3-igbinary
+        - php8.3-redis
+        - php8.3-swoole
+        - php8.3-memcached
+        - php8.3-pcov
+        - php8.3-imagick
+        - php8.3-xdebug
+    - name: Install Composer
+      ansible.builtin.shell: curl -sLS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
+    - name: CURL Bug Fixing
+      ansible.builtin.shell: |
+        apt remove -y --purge curl php8.3-curl
+        apt install -y curl php8.3-curl
+
+    - name: Install NodeJS Repository
+      ansible.builtin.shell: |
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor | tee /etc/apt/keyrings/nodesource.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+    - name: Install NodeJS
+      ansible.builtin.apt:
+        update_cache: yes
+        name: nodejs
+    - name: Install npm, pnpm, bun
+      ansible.builtin.shell: |
+        npm install -g npm
+        npm install -g pnpm
+        npm install -g bun
+
+    - name: Install Yarn Repository
+      ansible.builtin.shell: |
+        curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /etc/apt/keyrings/yarn.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+    - name: Install Yarn
+      ansible.builtin.apt:
+        update_cache: yes
+        name: yarn
+
+    - name: Clean unused dependencies
+      ansible.builtin.apt:
+        autoremove: yes
+        clean: yes

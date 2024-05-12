@@ -1,0 +1,8 @@
+- name: Just for Testing
+  hosts: all
+
+  tasks:
+    - name: Create New File
+      ansible.builtin.shell: touch test.txt
+    - name: Fill Content
+      ansible.builtin.shell: echo "Hello World!" > test.txt

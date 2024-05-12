@@ -1,0 +1,22 @@
+- name: Deploy Nginx
+  hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Update Repositories
+      ansible.builtin.apt:
+        update_cache: yes
+    - name: Install NGINX
+      ansible.builtin.apt:
+        name: nginx
+    - name: Upload SSL Params
+      ansible.builtin.copy:
+        src: /mnt/nginx-ssl-params.conf
+        dest: /etc/nginx/snippets/ssl-params.conf
+    - name: Generate a strong Diffie-Hellman (DH) group for SSL
+      ansible.builtin.shell: openssl dhparam -out /etc/nginx/dhparam.pem 4096
+    - name: Reload service httpd, in all cases
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: reloaded
