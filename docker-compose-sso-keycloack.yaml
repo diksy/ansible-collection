@@ -1,0 +1,91 @@
+version: '2'
+services:
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: ldap
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Fasilkom UNEJ"
+      LDAP_DOMAIN: "ilkom.unej.ac.id"
+      #LDAP_BASE_DN: ""
+      LDAP_ADMIN_PASSWORD: "ilkomUNEJ2024"
+      LDAP_CONFIG_PASSWORD: "ilkomUNEJ2024config"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "fasilkomUNEJ"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_CRT_FILENAME: "ldap.crt"
+      LDAP_TLS_KEY_FILENAME: "ldap.key"
+      LDAP_TLS_DH_PARAM_FILENAME: "dhparam.pem"
+      LDAP_TLS_CA_CRT_FILENAME: "ca.crt"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_CIPHER_SUITE: "SECURE256:-VERS-SSL3.0"
+      LDAP_TLS_VERIFY_CLIENT: "demand"
+      LDAP_REPLICATION: "false"
+      #LDAP_REPLICATION_CONFIG_SYNCPROV: 'binddn="cn=admin,cn=config" bindmethod=simple credentials="$$LDAP_CONFIG_PASSWORD" searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical'
+      #LDAP_REPLICATION_DB_SYNCPROV: 'binddn="cn=admin,$$LDAP_BASE_DN" bindmethod=simple credentials="$$LDAP_ADMIN_PASSWORD" searchbase="$$LDAP_BASE_DN" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical'
+      #LDAP_REPLICATION_HOSTS: "#PYTHON2BASH:['ldap://ldap.example.org','ldap://ldap2.example.org']"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+      LDAP_SSL_HELPER_PREFIX: "ldap"
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./ldap:/var/lib/ldap
+      - ./slapd.d:/etc/ldap/slapd.d
+      - ./certs:/container/service/slapd/assets/certs/
+    ports:
+      - "389:389"
+      - "636:636"
+    # For replication to work correctly, domainname and hostname must be
+    # set correctly so that "hostname"."domainname" equates to the
+    # fully-qualified domain name for the host.
+    domainname: "ilkom.unej.ac.id"
+    hostname: "ldap"
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: ldap-ui
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8081:80"
+    depends_on:
+      - openldap
+
+  mariadb:
+    image: mariadb:11.3
+    restart: unless-stopped
+    container_name: sso-db
+    environment:
+      MARIADB_ROOT_PASSWORD: "ilkomUNEJ2024"
+      MARIADB_USER: "diksy"
+      MARIADB_PASSWORD: "fasilkomUNEJ"
+      MARIADB_DATABASE: "sso"
+    volumes:
+      - ./mariadb:/var/lib/mysql:Z
+    ports:
+      - "3306:3306"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.2
+    container_name: sso
+    environment:
+      KEYCLOAK_ADMIN: "diksy"
+      KEYCLOAK_ADMIN_PASSWORD: "ilkomUNEJ2024"
+      KC_PROXY: "edge"
+      KC_DB: "mariadb"
+      KC_DB_URL: "jdbc:mariadb://mariadb:3306/sso"
+      KC_DB_USERNAME: "diksy"
+      KC_DB_PASSWORD: "fasilkomUNEJ"
+    ports:
+      - "8080:8080"
+    domainname: "ilkom.unej.ac.id"
+    hostname: "sso"
+    depends_on:
+      - mariadb
+    command: start-dev
